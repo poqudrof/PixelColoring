@@ -28,7 +28,7 @@ Open http://localhost:3000. `npm run build` creates a static site in `out/`, rea
 
 ## GitHub Pages deployment
 
-Every push to `main` tests the app, builds the static export, and deploys it with GitHub Actions. The public site is available at [pixel-drawing.jeremy-laviole.fr](https://pixel-drawing.jeremy-laviole.fr/). The repository must use **GitHub Actions** as its Pages source.
+Every push to `main` tests the app, builds the static export, and deploys it with GitHub Actions. The public site is available at [pixel-drawing.jeremy-laviole.fr](https://pixel-drawing.jeremy-laviole.fr/) and is served from the custom domain root. A fork hosted below a subfolder can set `NEXT_PUBLIC_BASE_PATH` at build time. The repository must use **GitHub Actions** as its Pages source.
 
 ## Command-line PDF generation
 

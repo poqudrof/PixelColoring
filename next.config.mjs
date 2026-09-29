@@ -1,7 +1,6 @@
-const repository = process.env.GITHUB_REPOSITORY?.split("/")[1] || "";
-const isGitHubPages = process.env.GITHUB_ACTIONS === "true";
-const isUserSite = repository.endsWith(".github.io");
-const basePath = isGitHubPages && repository && !isUserSite ? `/${repository}` : "";
+// The Pages project uses a custom domain and is served from its root.
+// A path can still be supplied explicitly for forks hosted below a subfolder.
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
