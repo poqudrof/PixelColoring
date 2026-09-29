@@ -15,7 +15,7 @@ Ouvrir http://localhost:3000. `npm run build` crée le site statique dans `out/`
 
 ## Déploiement GitHub Pages
 
-Chaque push sur `main` teste l’application, produit un export statique et le déploie avec GitHub Actions. Pour ce dépôt, l’adresse attendue est `https://poqudrof.github.io/PixelColoring/`. Le chemin de base est calculé depuis le nom du dépôt par le workflow, donc un fork reste déployable. Dans les paramètres GitHub du dépôt, **Pages > Source** doit être réglé sur **GitHub Actions**.
+Chaque push sur `main` teste l’application, produit un export statique et le déploie avec GitHub Actions. Le site public est disponible sur `https://pixel-drawing.jeremy-laviole.fr/` ; l’adresse GitHub `https://poqudrof.github.io/PixelColoring/` y redirige. Le chemin de base est calculé depuis le nom du dépôt par le workflow, donc un fork reste déployable. Dans les paramètres GitHub du dépôt, **Pages > Source** doit être réglé sur **GitHub Actions**.
 
 ## Fonctionnement
 
