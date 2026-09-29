@@ -1,5 +1,7 @@
 # Pixel & Papier
 
+**Français** · [English](README.en.md)
+
 Atelier de coloriage pixel art en français, en Next.js et Node.js. Import local, aperçu A4 interactif et PDF vectoriel. Aucune image n’est envoyée à un serveur.
 
 ## Démarrer

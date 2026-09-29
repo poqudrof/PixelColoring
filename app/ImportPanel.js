@@ -18,6 +18,10 @@ const emptyGrid = {
 };
 const EN = {
   "Votre pixel art": "Your pixel art",
+  "Ajoute ton dessin": "Add your picture",
+  "Réglages précis": "Fine-tune",
+  "À ouvrir seulement si la détection automatique a besoin d’un coup de pouce.":
+    "Open this only if automatic detection needs a little help.",
   "Lecture…": "Reading…",
   "Choisir une image": "Choose an image",
   "Pixel art, grille ou planche de personnages":
@@ -335,7 +339,7 @@ export default function ImportPanel({
   return (
     <section className="card import-panel">
       <h2>
-        <span className="step">01</span> {tr("Votre pixel art")}
+        <span className="step">1</span> {tr("Ajoute ton dessin")}
       </h2>
       <button
         className="upload"
@@ -438,104 +442,86 @@ export default function ImportPanel({
               ? tr("Terminer la sélection agrandie")
               : tr("Agrandir pour sélectionner")}
           </button>
-          <div className="crop-fields">
-            {[
-              ["x", tr("Gauche")],
-              ["y", tr("Haut")],
-              ["width", tr("Largeur")],
-              ["height", tr("Hauteur")],
-            ].map(([key, label]) => (
-              <label key={key}>
-                {label}
-                <input
-                  type="number"
-                  min={key === "x" || key === "y" ? 0 : 1}
-                  max={
-                    key === "x" || key === "width"
-                      ? source.width
-                      : source.height
-                  }
-                  value={crop[key]}
-                  onChange={(e) =>
-                    setCrop({ ...crop, [key]: Number(e.target.value) })
-                  }
-                />
-              </label>
-            ))}
-          </div>
-          <div className="import-actions">
-            <button
-              onClick={() =>
-                setCrop({
-                  x: 0,
-                  y: 0,
-                  width: source.width,
-                  height: source.height,
-                })
-              }
-            >
-              {tr("Toute l’image")}
-            </button>
-            <button
-              onClick={() => {
-                try {
-                  analyze(source, crop);
-                  onError("");
-                } catch (e) {
-                  onError(e.message);
+          <details className="advanced-import">
+            <summary>{tr("Réglages précis")}</summary>
+            <p className="import-help">
+              {tr(
+                "À ouvrir seulement si la détection automatique a besoin d’un coup de pouce.",
+              )}
+            </p>
+            <div className="crop-fields">
+              {[
+                ["x", tr("Gauche")],
+                ["y", tr("Haut")],
+                ["width", tr("Largeur")],
+                ["height", tr("Hauteur")],
+              ].map(([key, label]) => (
+                <label key={key}>
+                  {label}
+                  <input
+                    type="number"
+                    min={key === "x" || key === "y" ? 0 : 1}
+                    max={
+                      key === "x" || key === "width"
+                        ? source.width
+                        : source.height
+                    }
+                    value={crop[key]}
+                    onChange={(e) =>
+                      setCrop({ ...crop, [key]: Number(e.target.value) })
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="import-actions">
+              <button
+                onClick={() =>
+                  setCrop({
+                    x: 0,
+                    y: 0,
+                    width: source.width,
+                    height: source.height,
+                  })
                 }
-              }}
-            >
-              {tr("Détecter les cases")}
-            </button>
-          </div>
-          <label className="import-mode">
-            {tr("Lecture de la sélection")}
-            <select value={mode} onChange={(e) => setMode(e.target.value)}>
-              <option value="native">{tr("Un pixel = une case")}</option>
-              <option value="grid">{tr("Image agrandie / quadrillée")}</option>
-            </select>
-          </label>
-          {mode === "grid" && (
-            <>
-              <div className="crop-fields two">
-                {[
-                  ["columns", tr("Colonnes")],
-                  ["rows", tr("Lignes")],
-                ].map(([key, label]) => (
-                  <label key={key}>
-                    {label}
-                    <input
-                      type="number"
-                      min="1"
-                      max="256"
-                      value={grid[key]}
-                      onChange={(e) =>
-                        setGrid({ ...grid, [key]: Number(e.target.value) })
-                      }
-                    />
-                  </label>
-                ))}
-              </div>
-              <details>
-                <summary>{tr("Alignement de la grille")}</summary>
-                <p className="import-help">
-                  {tr(
-                    "Marges en pixels à ignorer à l’intérieur de la sélection.",
-                  )}
-                </p>
-                <div className="crop-fields">
+              >
+                {tr("Toute l’image")}
+              </button>
+              <button
+                onClick={() => {
+                  try {
+                    analyze(source, crop);
+                    onError("");
+                  } catch (e) {
+                    onError(e.message);
+                  }
+                }}
+              >
+                {tr("Détecter les cases")}
+              </button>
+            </div>
+            <label className="import-mode">
+              {tr("Lecture de la sélection")}
+              <select value={mode} onChange={(e) => setMode(e.target.value)}>
+                <option value="native">{tr("Un pixel = une case")}</option>
+                <option value="grid">
+                  {tr("Image agrandie / quadrillée")}
+                </option>
+              </select>
+            </label>
+            {mode === "grid" && (
+              <>
+                <div className="crop-fields two">
                   {[
-                    ["left", tr("Gauche")],
-                    ["top", tr("Haut")],
-                    ["right", tr("Droite")],
-                    ["bottom", tr("Bas")],
+                    ["columns", tr("Colonnes")],
+                    ["rows", tr("Lignes")],
                   ].map(([key, label]) => (
                     <label key={key}>
                       {label}
                       <input
                         type="number"
-                        min="0"
+                        min="1"
+                        max="256"
                         value={grid[key]}
                         onChange={(e) =>
                           setGrid({ ...grid, [key]: Number(e.target.value) })
@@ -544,9 +530,37 @@ export default function ImportPanel({
                     </label>
                   ))}
                 </div>
-              </details>
-            </>
-          )}
+                <details>
+                  <summary>{tr("Alignement de la grille")}</summary>
+                  <p className="import-help">
+                    {tr(
+                      "Marges en pixels à ignorer à l’intérieur de la sélection.",
+                    )}
+                  </p>
+                  <div className="crop-fields">
+                    {[
+                      ["left", tr("Gauche")],
+                      ["top", tr("Haut")],
+                      ["right", tr("Droite")],
+                      ["bottom", tr("Bas")],
+                    ].map(([key, label]) => (
+                      <label key={key}>
+                        {label}
+                        <input
+                          type="number"
+                          min="0"
+                          value={grid[key]}
+                          onChange={(e) =>
+                            setGrid({ ...grid, [key]: Number(e.target.value) })
+                          }
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </details>
+              </>
+            )}
+          </details>
           <label className="toggle-row">
             <span>
               <strong>{tr("Supprimer une couleur de fond")}</strong>

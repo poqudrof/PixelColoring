@@ -16,15 +16,17 @@ import { createColoringPdf } from "../lib/pdf.js";
 const COPY = {
   fr: {
     private: "Tout reste sur votre appareil",
-    badge: "L’ATELIER",
-    eyebrow: "DES PIXELS AUX CRAYONS",
-    title1: "De petits pixels.",
-    title2: "De grandes idées.",
-    intro1: "Transformez votre pixel art en un coloriage à imprimer.",
-    intro2: "Un peu de papier, beaucoup de couleurs.",
+    badge: "LE COIN CRÉATIF",
+    eyebrow: "CRÉE TON COLORIAGE",
+    title1: "Choisis ton dessin.",
+    title2: "À toi de colorier !",
+    intro1:
+      "Ajoute ton pixel art et prépare une jolie feuille en quelques clics.",
+    intro2: "Tout est prêt pour imprimer, colorier ou projeter.",
+    journey: ["Ajoute ton dessin", "Prépare ta feuille", "Imprime ou projette"],
     crayons: "À vos crayons !",
     cases: "cases",
-    settings: "À votre façon",
+    settings: "Prépare ta feuille",
     printArea: "Zone d’impression",
     small: "Petite",
     large: "Grande",
@@ -40,9 +42,9 @@ const COPY = {
     blackHelp: "Conserve les contours noirs de l’image.",
     palette: "Afficher la palette",
     paletteHelp: "Les couleurs et leurs numéros sur la feuille.",
-    onePixel: "Un pixel, une case.",
-    tip: "Import natif ou reconstruction des cases. Les couleurs sont rapprochées de 12 teintes simples.",
-    live: "Aperçu en direct",
+    onePixel: "Chaque carré a sa couleur.",
+    tip: "Les couleurs sont regroupées en teintes simples, faciles à retrouver dans la palette.",
+    live: "Ta feuille",
     coloring: "Coloriage",
     reconstruction: "Reconstruction",
     workshop: "MON ATELIER PIXEL",
@@ -53,9 +55,10 @@ const COPY = {
     square: "Zone carrée de",
     warning:
       "Les cases font moins de 3 mm : les repères seront petits à l’impression.",
-    ready: "Votre prochain moment créatif est prêt.",
-    readyHelp: "Une feuille A4, une palette et le plaisir de colorier.",
-    projector: "Projecteur",
+    ready: "Ton coloriage est prêt !",
+    readyHelp:
+      "Tu peux maintenant l’imprimer, télécharger le PDF ou le projeter.",
+    projector: "Projeter",
     print: "Imprimer",
     preparing: "Préparation…",
     download: "Télécharger le PDF",
@@ -67,15 +70,17 @@ const COPY = {
   },
   en: {
     private: "Everything stays on your device",
-    badge: "THE STUDIO",
-    eyebrow: "FROM PIXELS TO CRAYONS",
-    title1: "Tiny pixels.",
-    title2: "Big ideas.",
-    intro1: "Turn your pixel art into a printable coloring page.",
-    intro2: "A little paper, a lot of color.",
+    badge: "CREATIVE CORNER",
+    eyebrow: "MAKE YOUR COLORING PAGE",
+    title1: "Pick your picture.",
+    title2: "Time to color!",
+    intro1:
+      "Add your pixel art and make a lovely coloring sheet in a few clicks.",
+    intro2: "Everything is ready to print, color, or project.",
+    journey: ["Add your picture", "Prepare your page", "Print or project"],
     crayons: "Grab your crayons!",
     cases: "cells",
-    settings: "Make it yours",
+    settings: "Prepare your page",
     printArea: "Print area",
     small: "Small",
     large: "Large",
@@ -91,9 +96,9 @@ const COPY = {
     blackHelp: "Keeps the image’s black outlines.",
     palette: "Show palette",
     paletteHelp: "Colors and their numbers on the page.",
-    onePixel: "One pixel, one cell.",
-    tip: "Native import or cell reconstruction. Colors are matched to 12 simple shades.",
-    live: "Live preview",
+    onePixel: "Every square has a color.",
+    tip: "Colors are grouped into simple shades that are easy to find in the palette.",
+    live: "Your page",
     coloring: "Coloring page",
     reconstruction: "Reconstruction",
     workshop: "MY PIXEL WORKSHOP",
@@ -103,9 +108,9 @@ const COPY = {
     actualSize: "A4 · Print at actual size (100%)",
     square: "Square area",
     warning: "Cells are under 3 mm: labels will be small when printed.",
-    ready: "Your next creative moment is ready.",
-    readyHelp: "One A4 sheet, a palette, and the joy of coloring.",
-    projector: "Projector",
+    ready: "Your coloring page is ready!",
+    readyHelp: "You can print it, download the PDF, or project it.",
+    projector: "Project",
     print: "Print",
     preparing: "Preparing…",
     download: "Download PDF",
@@ -280,6 +285,14 @@ export default function Home() {
             <span className="art-note">{copy.crayons}</span>
           </div>
         </div>
+        <ol className="journey" aria-label={copy.eyebrow}>
+          {copy.journey.map((label, index) => (
+            <li key={label}>
+              <span>{index + 1}</span>
+              {label}
+            </li>
+          ))}
+        </ol>
         <div className="workspace">
           <aside>
             <ImportPanel
@@ -296,7 +309,7 @@ export default function Home() {
             </div>
             <section className="card settings">
               <h2>
-                <span className="step">02</span> {copy.settings}
+                <span className="step">2</span> {copy.settings}
               </h2>
               <div className="field">
                 <label htmlFor="size">
@@ -397,7 +410,7 @@ export default function Home() {
           <section className="preview">
             <div className="preview-bar">
               <div>
-                <span className="live-dot" /> {copy.live}
+                <span className="step preview-step">3</span> {copy.live}
               </div>
               <div className="view-tabs">
                 <button

@@ -1014,3 +1014,228 @@ footer span {
   border-radius: 3px;
   padding: 3px;
 }
+
+/* Friendly workshop theme */
+:root {
+  --ink: #3f3a52;
+  --muted: #756f82;
+  --green: #ef6f61;
+  --border: #eadfc8;
+}
+body {
+  background:
+    radial-gradient(circle at 8% 9%, #ffd95a55 0 75px, transparent 76px),
+    radial-gradient(circle at 94% 19%, #77cbea42 0 100px, transparent 101px),
+    #fff9ea;
+  font-family: "Arial Rounded MT Bold", "Trebuchet MS", Arial, sans-serif;
+}
+header {
+  height: 82px;
+  background: #fffdf7e8;
+  border-bottom: 2px solid #f0e2c6;
+  backdrop-filter: blur(8px);
+}
+.brand-icon {
+  background: #ef6f61;
+  border-radius: 12px 12px 8px 12px;
+  box-shadow: 3px 3px 0 #f7c94b;
+}
+.amp,
+.eyebrow,
+.art-note {
+  color: #d65b70;
+}
+.badge {
+  background: #fff0b8;
+  border: 0;
+  border-radius: 999px;
+  color: #705f36;
+  font-weight: 800;
+}
+.language-switch {
+  border: 2px solid #eadfc8;
+  border-radius: 999px;
+  background: white;
+}
+.language-switch button {
+  border-radius: 999px;
+  font-weight: 800;
+}
+.language-switch button[aria-pressed="true"] {
+  background: #5badd1;
+}
+.intro {
+  padding-bottom: 22px;
+}
+h1 {
+  font-family: "Arial Rounded MT Bold", "Trebuchet MS", Arial, sans-serif;
+  font-weight: 900;
+  color: #3f3a52;
+  letter-spacing: -2px;
+}
+h1::first-line {
+  color: #ef6f61;
+}
+.intro p {
+  font-size: 14px;
+}
+.tiny-art {
+  background: white;
+  padding: 10px;
+  border-radius: 22px;
+  box-shadow: 8px 8px 0 #ffd35c;
+}
+.journey {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+}
+.journey li {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 16px;
+  border: 2px solid #eadfc8;
+  border-radius: 18px;
+  background: #fffdf8;
+  color: #5c5669;
+  font-weight: 800;
+}
+.journey li:nth-child(2) span {
+  background: #62bddb;
+}
+.journey li:nth-child(3) span {
+  background: #76bd8b;
+}
+.journey li span,
+.step {
+  width: 30px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  padding: 0;
+  border-radius: 11px;
+  background: #ef6f61;
+  color: white;
+  font-size: 13px;
+  box-shadow: 2px 2px 0 #f5c94b;
+}
+.settings .step {
+  background: #62bddb;
+}
+.preview-step {
+  background: #76bd8b;
+  margin-right: 7px;
+}
+.card,
+.preview,
+.export-bar {
+  border: 2px solid #eadfc8;
+  border-radius: 24px;
+  box-shadow: 0 7px 0 #eadfc8aa;
+  background: #fffdf8;
+}
+.upload {
+  border: 2px dashed #efa093;
+  background: #fff3df;
+  border-radius: 18px;
+  padding: 22px 8px;
+}
+.upload:hover,
+.upload.drag {
+  background: #ffe8cf;
+  border-color: #ef6f61;
+}
+.upload-icon {
+  width: 45px;
+  height: 45px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  color: white;
+  background: #ef6f61;
+}
+.paste-image,
+.expand-source,
+.import-actions button,
+.background-controls button,
+.segments,
+.view-tabs {
+  border-radius: 12px;
+}
+.paste-image {
+  border: 2px solid #eadfc8;
+  color: #685e76;
+}
+.advanced-import {
+  margin: 14px 0;
+  padding: 11px 13px;
+  border: 2px solid #eee3cf;
+  border-radius: 14px;
+  background: #fffbf2;
+}
+.advanced-import > summary {
+  font-size: 11px;
+  font-weight: 800;
+  color: #766887;
+}
+.apply-import,
+.primary {
+  background: #ef6f61;
+  border-color: #ef6f61;
+  border-radius: 14px;
+  font-weight: 800;
+  box-shadow: 0 4px 0 #bd4e47;
+}
+.apply-import:active,
+.primary:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #bd4e47;
+}
+.secondary {
+  border: 2px solid #dfd2bb;
+  border-radius: 14px !important;
+  color: #5f586e;
+  background: white;
+}
+input[type="range"] {
+  accent-color: #ef6f61;
+}
+.toggle-row input:checked {
+  background: #62bddb;
+}
+.preview {
+  background: #eef6f4;
+}
+.preview-bar {
+  border-bottom: 2px solid #eadfc8;
+}
+.paper-stage {
+  background-color: #e7f3f0;
+  background-image: radial-gradient(#a9ccc3 1px, transparent 1px);
+}
+.export-bar {
+  background: #fff3d2;
+}
+.export-bar strong {
+  font-family: "Arial Rounded MT Bold", "Trebuchet MS", Arial, sans-serif;
+  color: #cc5c53;
+}
+@media (max-width: 720px) {
+  .journey {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .journey li {
+    padding: 9px 12px;
+  }
+}
+@media print {
+  .journey {
+    display: none !important;
+  }
+}
