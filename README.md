@@ -19,6 +19,10 @@ Ouvrir http://localhost:3000. `npm run build` crée le site statique dans `out/`
 
 Chaque push sur `main` teste l’application, produit un export statique et le déploie avec GitHub Actions. Le site public est disponible sur `https://pixel-drawing.jeremy-laviole.fr/` ; l’adresse GitHub `https://poqudrof.github.io/PixelColoring/` y redirige. Le domaine personnalisé sert le site depuis sa racine. Un fork déployé dans un sous-dossier peut définir `NEXT_PUBLIC_BASE_PATH` pendant la compilation. Dans les paramètres GitHub du dépôt, **Pages > Source** doit être réglé sur **GitHub Actions**.
 
+## Référencement
+
+Le build génère `robots.txt`, `sitemap.xml`, l’URL canonique, les balises Open Graph et Twitter, les données structurées JSON-LD (`WebApplication`) et les icônes. L’adresse publique vient de `lib/site.js` ; un fork la remplace avec `NEXT_PUBLIC_SITE_URL` (sous-dossier compris). Le favicon, l’icône Apple et l’image de partage 1200 × 630 sont produits à partir du champignon de démonstration par `npm run seo:images`, puis versionnés dans `app/`. Après le déploiement, déclarer `https://pixel-drawing.jeremy-laviole.fr/sitemap.xml` dans Google Search Console et Bing Webmaster Tools.
+
 ## Fonctionnement
 
 - PNG, JPEG, WebP ou GIF (première image), jusqu’à 16 millions de pixels, 8192 px par côté et 10 Mo dans l’interface. La grille reconstruite reste limitée à 256 × 256 cases.

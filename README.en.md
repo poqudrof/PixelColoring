@@ -30,6 +30,10 @@ Open http://localhost:3000. `npm run build` creates a static site in `out/`, rea
 
 Every push to `main` tests the app, builds the static export, and deploys it with GitHub Actions. The public site is available at [pixel-drawing.jeremy-laviole.fr](https://pixel-drawing.jeremy-laviole.fr/) and is served from the custom domain root. A fork hosted below a subfolder can set `NEXT_PUBLIC_BASE_PATH` at build time. The repository must use **GitHub Actions** as its Pages source.
 
+## Search engines
+
+The build emits `robots.txt`, `sitemap.xml`, the canonical URL, Open Graph and Twitter tags, JSON-LD structured data (`WebApplication`) and icons. The public address lives in `lib/site.js`; a fork overrides it with `NEXT_PUBLIC_SITE_URL` (including any subfolder). The favicon, Apple icon and 1200 × 630 share image are generated from the demo mushroom by `npm run seo:images` and committed in `app/`. After deploying, submit `https://pixel-drawing.jeremy-laviole.fr/sitemap.xml` in Google Search Console and Bing Webmaster Tools.
+
 ## Command-line PDF generation
 
 ```sh

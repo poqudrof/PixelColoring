@@ -21,7 +21,7 @@ const COPY = {
     title1: "Choisis ton dessin.",
     title2: "À toi de colorier !",
     intro1:
-      "Ajoute ton pixel art et prépare une jolie feuille en quelques clics.",
+      "Ajoute ton pixel art et prépare un coloriage magique en quelques clics.",
     intro2: "Tout est prêt pour imprimer, colorier ou projeter.",
     journey: ["Ajoute ton dessin", "Prépare ta feuille", "Imprime ou projette"],
     crayons: "À vos crayons !",
@@ -75,7 +75,7 @@ const COPY = {
     title1: "Pick your picture.",
     title2: "Time to color!",
     intro1:
-      "Add your pixel art and make a lovely coloring sheet in a few clicks.",
+      "Add your pixel art and make a color-by-number sheet in a few clicks.",
     intro2: "Everything is ready to print, color, or project.",
     journey: ["Add your picture", "Prepare your page", "Print or project"],
     crayons: "Grab your crayons!",

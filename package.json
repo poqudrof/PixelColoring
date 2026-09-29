@@ -9,6 +9,7 @@
     "start": "next start --hostname 127.0.0.1",
     "test": "node --test",
     "coloriage": "node scripts/coloriage.mjs",
+    "seo:images": "node scripts/seo-images.mjs",
     "format": "prettier --write app lib scripts tests package.json README.md"
   },
   "dependencies": {
