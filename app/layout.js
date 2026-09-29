@@ -1,8 +1,7 @@
 import "./globals.css";
 export const metadata = {
-  title: "Pixel & Papier — Atelier de coloriage",
-  description:
-    "Transformez vos pixel arts en coloriages à imprimer au format A4.",
+  title: "Pixel & Papier — Pixel art coloring studio",
+  description: "Transform pixel art into printable A4 coloring pages.",
 };
 export default function RootLayout({ children }) {
   return (

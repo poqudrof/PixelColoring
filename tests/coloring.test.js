@@ -19,6 +19,7 @@ test("native resolution, transparent pixels and simple French colors", () => {
   );
   assert.deepEqual(model, { width: 3, height: 1, cells: [6, 1, null] });
   assert.equal(labelFor(6, { labels: "names" }), "Jaune");
+  assert.equal(labelFor(6, { labels: "names", locale: "en" }), "Yellow");
   assert.equal(labelFor(6, { labels: "numbers" }), "6");
   assert.deepEqual(
     colorsUsed(model, { outlines: true }).map((p) => p.id),

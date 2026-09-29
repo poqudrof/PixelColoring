@@ -1,24 +1,129 @@
 "use client";
-import { useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
 import {
   PALETTE,
   DEFAULTS,
   demoModel,
-  readPixels,
   geometry,
   colorsUsed,
   labelFor,
+  colorName,
 } from "../lib/coloring.js";
+import ImportPanel from "./ImportPanel";
+import Projector from "./Projector";
 import { createColoringPdf } from "../lib/pdf.js";
-function PixelGrid({ model, options, original = false }) {
+const COPY = {
+  fr: {
+    private: "Tout reste sur votre appareil",
+    badge: "L’ATELIER",
+    eyebrow: "DES PIXELS AUX CRAYONS",
+    title1: "De petits pixels.",
+    title2: "De grandes idées.",
+    intro1: "Transformez votre pixel art en un coloriage à imprimer.",
+    intro2: "Un peu de papier, beaucoup de couleurs.",
+    crayons: "À vos crayons !",
+    cases: "cases",
+    settings: "À votre façon",
+    printArea: "Zone d’impression",
+    small: "Petite",
+    large: "Grande",
+    gridWidth: "Épaisseur de la grille",
+    markers: "Repères dans les cases",
+    numbers: "123 · Nombres",
+    colors: "Abc · Couleurs",
+    none: "Aucun",
+    markerLight: "Clarté des repères",
+    dark: "Foncés",
+    light: "Très clairs",
+    black: "Préremplir les pixels noirs",
+    blackHelp: "Conserve les contours noirs de l’image.",
+    palette: "Afficher la palette",
+    paletteHelp: "Les couleurs et leurs numéros sur la feuille.",
+    onePixel: "Un pixel, une case.",
+    tip: "Import natif ou reconstruction des cases. Les couleurs sont rapprochées de 12 teintes simples.",
+    live: "Aperçu en direct",
+    coloring: "Coloriage",
+    reconstruction: "Reconstruction",
+    workshop: "MON ATELIER PIXEL",
+    colorNow: "À toi de colorier !",
+    name: "Prénom",
+    myPalette: "MA PALETTE",
+    actualSize: "A4 · Imprimer à taille réelle (100 %)",
+    square: "Zone carrée de",
+    warning:
+      "Les cases font moins de 3 mm : les repères seront petits à l’impression.",
+    ready: "Votre prochain moment créatif est prêt.",
+    readyHelp: "Une feuille A4, une palette et le plaisir de colorier.",
+    projector: "Projecteur",
+    print: "Imprimer",
+    preparing: "Préparation…",
+    download: "Télécharger le PDF",
+    footer: "Fait pour les petites mains et les grandes imaginations.",
+    pdfError: "La création du PDF a échoué. Réessayez.",
+    reconstructed: "Pixel art reconstruit",
+    gridAlt: "Grille de coloriage",
+    demoName: "Petit champignon",
+  },
+  en: {
+    private: "Everything stays on your device",
+    badge: "THE STUDIO",
+    eyebrow: "FROM PIXELS TO CRAYONS",
+    title1: "Tiny pixels.",
+    title2: "Big ideas.",
+    intro1: "Turn your pixel art into a printable coloring page.",
+    intro2: "A little paper, a lot of color.",
+    crayons: "Grab your crayons!",
+    cases: "cells",
+    settings: "Make it yours",
+    printArea: "Print area",
+    small: "Small",
+    large: "Large",
+    gridWidth: "Grid thickness",
+    markers: "Cell labels",
+    numbers: "123 · Numbers",
+    colors: "Abc · Colors",
+    none: "None",
+    markerLight: "Label lightness",
+    dark: "Dark",
+    light: "Very light",
+    black: "Fill black pixels",
+    blackHelp: "Keeps the image’s black outlines.",
+    palette: "Show palette",
+    paletteHelp: "Colors and their numbers on the page.",
+    onePixel: "One pixel, one cell.",
+    tip: "Native import or cell reconstruction. Colors are matched to 12 simple shades.",
+    live: "Live preview",
+    coloring: "Coloring page",
+    reconstruction: "Reconstruction",
+    workshop: "MY PIXEL WORKSHOP",
+    colorNow: "Time to color!",
+    name: "Name",
+    myPalette: "MY PALETTE",
+    actualSize: "A4 · Print at actual size (100%)",
+    square: "Square area",
+    warning: "Cells are under 3 mm: labels will be small when printed.",
+    ready: "Your next creative moment is ready.",
+    readyHelp: "One A4 sheet, a palette, and the joy of coloring.",
+    projector: "Projector",
+    print: "Print",
+    preparing: "Preparing…",
+    download: "Download PDF",
+    footer: "Made for little hands and big imaginations.",
+    pdfError: "PDF creation failed. Please try again.",
+    reconstructed: "Reconstructed pixel art",
+    gridAlt: "Coloring grid",
+    demoName: "Little mushroom",
+  },
+};
+function PixelGrid({ model, options, original = false, copy }) {
   const g = geometry(model, options),
     cell = 10,
     stroke = Math.min((options.grid / g.cell) * cell, 2);
   return (
     <svg
       role="img"
-      aria-label={original ? "Image originale" : "Grille de coloriage"}
+      aria-label={original ? copy.reconstructed : copy.gridAlt}
       viewBox={`0 0 ${model.width * cell} ${model.height * cell}`}
       style={{ width: "100%", height: "100%" }}
     >
@@ -66,66 +171,46 @@ export default function Home() {
     [tab, setTab] = useState("sheet"),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
-    [drag, setDrag] = useState(false);
-  const input = useRef();
-  const update = (key, value) => setOptions((o) => ({ ...o, [key]: value }));
-  async function load(file) {
-    if (!file) return;
-    setError("");
-    setBusy(true);
-    try {
-      if (
-        !["image/png", "image/jpeg", "image/webp", "image/gif"].includes(
-          file.type,
-        )
-      )
-        throw new Error("Choisissez une image PNG, JPEG, WebP ou GIF.");
-      if (file.size > 10 * 1024 * 1024)
-        throw new Error("Le fichier doit faire moins de 10 Mo.");
-      const bitmap = await createImageBitmap(file);
-      try {
-        if (bitmap.width > 256 || bitmap.height > 256)
-          throw new Error(
-            "L’image doit faire au maximum 256 × 256 pixels. Utilisez le pixel art à sa résolution native.",
-          );
-        const canvas = document.createElement("canvas");
-        canvas.width = bitmap.width;
-        canvas.height = bitmap.height;
-        const context = canvas.getContext("2d", { willReadFrequently: true });
-        context.drawImage(bitmap, 0, 0);
-        setModel(
-          readPixels(
-            bitmap.width,
-            bitmap.height,
-            context.getImageData(0, 0, bitmap.width, bitmap.height).data,
-          ),
-        );
-        setName(file.name.replace(/\.[^.]+$/, ""));
-      } finally {
-        bitmap.close();
-      }
-    } catch (e) {
-      setError(e.message || "Impossible de lire cette image.");
-    } finally {
-      setBusy(false);
-      if (input.current) input.current.value = "";
-    }
+    [projector, setProjector] = useState(false),
+    [locale, setLocale] = useState("fr");
+  const copy = COPY[locale];
+  useEffect(() => {
+    const saved = localStorage.getItem("pixel-paper-language");
+    const detected = navigator.languages?.some((language) =>
+      language.toLowerCase().startsWith("en"),
+    )
+      ? "en"
+      : "fr";
+    setLocale(saved === "en" || saved === "fr" ? saved : detected);
+  }, []);
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    setName((current) =>
+      current === COPY.fr.demoName || current === COPY.en.demoName
+        ? COPY[locale].demoName
+        : current,
+    );
+  }, [locale]);
+  function changeLocale(next) {
+    setLocale(next);
+    localStorage.setItem("pixel-paper-language", next);
   }
+  const update = (key, value) => setOptions((o) => ({ ...o, [key]: value }));
   async function download() {
     setBusy(true);
     setError("");
     try {
-      const bytes = await createColoringPdf(model, options),
+      const bytes = await createColoringPdf(model, { ...options, locale }),
         url = URL.createObjectURL(
           new Blob([bytes], { type: "application/pdf" }),
         ),
         a = document.createElement("a");
       a.href = url;
-      a.download = `${name.replace(/[^\p{L}\p{N}_-]/gu, "-")}-coloriage.pdf`;
+      a.download = `${name.replace(/[^\p{L}\p{N}_-]/gu, "-")}-${locale === "en" ? "coloring-page" : "coloriage"}.pdf`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 30000);
     } catch {
-      setError("La création du PDF a échoué. Réessayez.");
+      setError(copy.pdfError);
     } finally {
       setBusy(false);
     }
@@ -134,94 +219,88 @@ export default function Home() {
     used = colorsUsed(model, options);
   return (
     <>
+      {projector && (
+        <Projector
+          model={model}
+          locale={locale}
+          onClose={() => setProjector(false)}
+        />
+      )}
       <header>
-        <a className="brand" href="/" aria-label="Pixel et Papier">
+        <a className="brand" href="./" aria-label="Pixel et Papier">
           <span className="brand-icon">▦</span> pixel{" "}
           <span className="amp">&</span> papier
-          <span className="badge">L’ATELIER</span>
+          <span className="badge">{copy.badge}</span>
         </a>
-        <span className="local">
-          <i /> Tout reste sur votre appareil
-        </span>
+        <div className="header-tools">
+          <span className="local">
+            <i /> {copy.private}
+          </span>
+          <div className="language-switch" aria-label="Language">
+            <button
+              aria-pressed={locale === "fr"}
+              onClick={() => changeLocale("fr")}
+            >
+              FR
+            </button>
+            <button
+              aria-pressed={locale === "en"}
+              onClick={() => changeLocale("en")}
+            >
+              EN
+            </button>
+          </div>
+        </div>
       </header>
       <main>
         <div className="intro">
           <div>
-            <div className="eyebrow">DES PIXELS AUX CRAYONS</div>
+            <div className="eyebrow">{copy.eyebrow}</div>
             <h1>
-              De petits pixels.
+              {copy.title1}
               <br />
-              De grandes idées.
+              {copy.title2}
             </h1>
             <p>
-              Transformez votre pixel art en un coloriage à imprimer.
+              {copy.intro1}
               <br />
-              Un peu de papier, beaucoup de couleurs.
+              {copy.intro2}
             </p>
           </div>
           <div className="intro-art">
             <span>✦</span>
             <div className="tiny-art">
-              <PixelGrid model={demoModel()} options={options} original />
+              <PixelGrid
+                model={demoModel()}
+                options={{ ...options, locale }}
+                original
+                copy={copy}
+              />
             </div>
-            <span className="art-note">À vos crayons !</span>
+            <span className="art-note">{copy.crayons}</span>
           </div>
         </div>
         <div className="workspace">
           <aside>
-            <section className="card">
-              <h2>
-                <span className="step">01</span> Votre pixel art
-              </h2>
-              <button
-                className={`upload ${drag ? "drag" : ""}`}
-                disabled={busy}
-                onClick={() => input.current.click()}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDrag(true);
-                }}
-                onDragLeave={() => setDrag(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDrag(false);
-                  if (!busy) load(e.dataTransfer.files[0]);
-                }}
-              >
-                <span className="upload-icon">↥</span>
-                <strong>Choisir une image</strong>
-                <span>ou glissez-la ici</span>
-                <small>PNG, JPG, WebP, GIF · 256 × 256 max.</small>
-              </button>
-              <input
-                ref={input}
-                hidden
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                onChange={(e) => load(e.target.files[0])}
-              />
-              <div className="file">
-                <div className="file-thumb">
-                  <PixelGrid model={model} options={options} original />
-                </div>
-                <div>
-                  <strong>{name}</strong>
-                  <small>
-                    {model.width} × {model.height} pixels ·{" "}
-                    {PALETTE.filter((p) => model.cells.includes(p.id)).length}{" "}
-                    couleurs
-                  </small>
-                </div>
-                <span className="file-check">✓</span>
-              </div>
-            </section>
+            <ImportPanel
+              locale={locale}
+              disabled={busy}
+              onError={setError}
+              onImport={(nextModel, nextName) => {
+                setModel(nextModel);
+                setName(nextName);
+              }}
+            />
+            <div className="import-summary">
+              {name} · {model.width} × {model.height} {copy.cases}
+            </div>
             <section className="card settings">
               <h2>
-                <span className="step">02</span> À votre façon
+                <span className="step">02</span> {copy.settings}
               </h2>
               <div className="field">
                 <label htmlFor="size">
-                  Zone d’impression <output>{options.size} mm</output>
+                  {copy.printArea} <output>{options.size} mm</output>
                 </label>
                 <input
                   id="size"
@@ -232,14 +311,13 @@ export default function Home() {
                   onChange={(e) => update("size", +e.target.value)}
                 />
                 <div className="range-labels">
-                  <span>Petite</span>
-                  <span>Grande</span>
+                  <span>{copy.small}</span>
+                  <span>{copy.large}</span>
                 </div>
               </div>
               <div className="field">
                 <label htmlFor="grid">
-                  Épaisseur de la grille{" "}
-                  <output>{options.grid.toFixed(2)} mm</output>
+                  {copy.gridWidth} <output>{options.grid.toFixed(2)} mm</output>
                 </label>
                 <input
                   id="grid"
@@ -253,12 +331,12 @@ export default function Home() {
               </div>
               <div className="divider" />
               <div className="field">
-                <label>Repères dans les cases</label>
+                <label>{copy.markers}</label>
                 <div className="segments">
                   {[
-                    ["numbers", "123 · Nombres"],
-                    ["names", "Abc · Couleurs"],
-                    ["none", "Aucun"],
+                    ["numbers", copy.numbers],
+                    ["names", copy.colors],
+                    ["none", copy.none],
                   ].map(([value, label]) => (
                     <button
                       key={value}
@@ -273,7 +351,7 @@ export default function Home() {
               </div>
               <div className="field">
                 <label htmlFor="gray">
-                  Clarté des repères <output>{options.gray} %</output>
+                  {copy.markerLight} <output>{options.gray} %</output>
                 </label>
                 <input
                   id="gray"
@@ -285,22 +363,14 @@ export default function Home() {
                   onChange={(e) => update("gray", +e.target.value)}
                 />
                 <div className="range-labels">
-                  <span>Foncés</span>
-                  <span>Très clairs</span>
+                  <span>{copy.dark}</span>
+                  <span>{copy.light}</span>
                 </div>
               </div>
               <div className="divider" />
               {[
-                [
-                  "outlines",
-                  "Préremplir les pixels noirs",
-                  "Conserve les contours noirs de l’image.",
-                ],
-                [
-                  "legend",
-                  "Afficher la palette",
-                  "Les couleurs et leurs numéros sur la feuille.",
-                ],
+                ["outlines", copy.black, copy.blackHelp],
+                ["legend", copy.palette, copy.paletteHelp],
               ].map(([key, label, help]) => (
                 <label className="toggle-row" key={key}>
                   <span>
@@ -318,30 +388,29 @@ export default function Home() {
             <div className="tip">
               <span>✧</span>
               <p>
-                <strong>Un pixel, une case.</strong>
+                <strong>{copy.onePixel}</strong>
                 <br />
-                La résolution d’origine est conservée. Les couleurs sont
-                rapprochées de 12 teintes simples.
+                {copy.tip}
               </p>
             </div>
           </aside>
           <section className="preview">
             <div className="preview-bar">
               <div>
-                <span className="live-dot" /> Aperçu en direct
+                <span className="live-dot" /> {copy.live}
               </div>
               <div className="view-tabs">
                 <button
                   className={tab === "sheet" ? "active" : ""}
                   onClick={() => setTab("sheet")}
                 >
-                  Coloriage
+                  {copy.coloring}
                 </button>
                 <button
                   className={tab === "original" ? "active" : ""}
                   onClick={() => setTab("original")}
                 >
-                  Original
+                  {copy.reconstruction}
                 </button>
               </div>
               <span className="paper-format">A4 · Portrait</span>
@@ -349,12 +418,12 @@ export default function Home() {
             <div className="paper-stage">
               <div className="paper">
                 <div className="paper-heading">
-                  <strong>MON ATELIER PIXEL</strong>
+                  <strong>{copy.workshop}</strong>
                   <span>
                     {model.width} × {model.height} pixels
                   </span>
-                  <h3>À toi de colorier !</h3>
-                  <small>Prénom : ................................</small>
+                  <h3>{copy.colorNow}</h3>
+                  <small>{copy.name} : ................................</small>
                 </div>
                 <div
                   className="sheet-grid"
@@ -367,18 +436,19 @@ export default function Home() {
                 >
                   <PixelGrid
                     model={model}
-                    options={options}
+                    options={{ ...options, locale }}
                     original={tab === "original"}
+                    copy={copy}
                   />
                 </div>
                 {options.legend && (
                   <div className="legend">
-                    <strong>MA PALETTE</strong>
+                    <strong>{copy.myPalette}</strong>
                     <div>
                       {used.map((p) => (
                         <span key={p.id}>
                           <i style={{ background: p.hex }} />
-                          {p.id} &nbsp; {p.name}
+                          {p.id} &nbsp; {colorName(p, locale)}
                         </span>
                       ))}
                     </div>
@@ -386,22 +456,19 @@ export default function Home() {
                 )}
                 <div className="paper-footer">
                   <span>PIXEL & PAPIER</span>
-                  <span>A4 · Imprimer à taille réelle (100 %)</span>
+                  <span>{copy.actualSize}</span>
                 </div>
               </div>
             </div>
             <div className="preview-bottom">
               <span>
-                ↔ &nbsp; Zone carrée de {options.size} × {options.size} mm
+                ↔ &nbsp; {copy.square} {options.size} × {options.size} mm
               </span>
-              <span>{model.width * model.height} pixels d’origine</span>
+              <span>
+                {model.width * model.height} {copy.cases}
+              </span>
             </div>
-            {g.cell < 3 && (
-              <div className="warning">
-                Les cases font moins de 3 mm : les repères seront petits à
-                l’impression.
-              </div>
-            )}
+            {g.cell < 3 && <div className="warning">{copy.warning}</div>}
           </section>
         </div>
         {error && (
@@ -411,10 +478,13 @@ export default function Home() {
         )}
         <div className="export-bar">
           <div>
-            <strong>Votre prochain moment créatif est prêt.</strong>
-            <p>Une feuille A4, une palette et le plaisir de colorier.</p>
+            <strong>{copy.ready}</strong>
+            <p>{copy.readyHelp}</p>
           </div>
           <div className="actions">
+            <button className="secondary" onClick={() => setProjector(true)}>
+              ▦ {copy.projector}
+            </button>
             <button
               className="secondary"
               onClick={() => {
@@ -422,15 +492,15 @@ export default function Home() {
                 window.print();
               }}
             >
-              Imprimer
+              {copy.print}
             </button>
             <button className="primary" disabled={busy} onClick={download}>
-              {busy ? "Préparation…" : "↓  Télécharger le PDF"}
+              {busy ? copy.preparing : `↓  ${copy.download}`}
             </button>
           </div>
         </div>
         <footer>
-          Fait pour les petites mains et les grandes imaginations.
+          {copy.footer}
           <span>PIXEL & PAPIER</span>
         </footer>
       </main>
