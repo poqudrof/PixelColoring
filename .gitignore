@@ -1,0 +1,5 @@
+node_modules/
+.next/
+output/
+tmp/
+.DS_Store
