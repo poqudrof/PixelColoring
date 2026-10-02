@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { readPixels } from "../lib/coloring.js";
+import { PALETTE, readPixels } from "../lib/coloring.js";
 import {
   detectGrid,
   reconstruct,
@@ -8,6 +8,8 @@ import {
   removeBackground,
   validateSource,
 } from "../lib/reconstruct.js";
+import { loadFile, loadJSON, saveFile, saveJSON } from "../lib/storage.js";
+const IMPORT_KEY = "pixel-paper-import";
 const emptyGrid = {
   columns: 24,
   rows: 24,
@@ -27,17 +29,19 @@ const EN = {
   "Pixel art, grille ou planche de personnages":
     "Pixel art, grid, or character sheet",
   "Coller une image": "Paste an image",
-  "Cliquez sur la couleur de fond dans l’image.":
-    "Click the background color in the image.",
   "Glissez sur l’image pour sélectionner une vignette ou une partie du dessin.":
     "Drag over the image to select a tile or part of the artwork.",
   "Terminer la sélection agrandie": "Finish enlarged selection",
   "Agrandir pour sélectionner": "Enlarge to select",
+  "Aperçu de la sélection": "Selection preview",
+  cases: "cells",
   Gauche: "Left",
   Haut: "Top",
   Largeur: "Width",
   Hauteur: "Height",
   "Toute l’image": "Whole image",
+  "Recadrer sur la sélection": "Crop to selection",
+  "Image d’origine": "Original image",
   "Détecter les cases": "Detect cells",
   "Lecture de la sélection": "Selection reading",
   "Un pixel = une case": "One pixel = one cell",
@@ -53,8 +57,6 @@ const EN = {
   "Retire cette couleur partout dans la sélection.":
     "Removes this color everywhere in the selection.",
   Couleur: "Color",
-  "Annuler la pipette": "Cancel eyedropper",
-  "Pipette sur l’image": "Eyedropper on image",
   Tolérance: "Tolerance",
   "Appliquer à la feuille": "Apply to page",
   "La détection vise les grilles droites et régulières. Une photo inclinée nécessite un redressement préalable.":
@@ -70,6 +72,8 @@ export default function ImportPanel({
   const msg = (fr, en) => (locale === "en" ? en : fr);
   const input = useRef(),
     anchor = useRef(),
+    resizing = useRef(null),
+    [preview, setPreview] = useState(null),
     [source, setSource] = useState(null),
     [image, setImage] = useState(""),
     [filename, setFilename] = useState(""),
@@ -80,9 +84,73 @@ export default function ImportPanel({
     [background, setBackground] = useState(false),
     [color, setColor] = useState("#ffffff"),
     [tolerance, setTolerance] = useState(25),
-    [picking, setPicking] = useState(false),
     [loading, setLoading] = useState(false),
-    [expanded, setExpanded] = useState(false);
+    [expanded, setExpanded] = useState(false),
+    [original, setOriginal] = useState(null),
+    current = useRef(null),
+    imported = useRef(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const file = await loadFile("source"),
+        saved = loadJSON(IMPORT_KEY) || {};
+      if (!(file instanceof Blob) || cancelled || imported.current) return;
+      try {
+        const { raw, url } = await decode(file);
+        if (cancelled || imported.current) return;
+        current.current = file;
+        const c = saved.crop,
+          validCrop =
+            [c?.x, c?.y, c?.width, c?.height].every(Number.isInteger) &&
+            c.x >= 0 &&
+            c.y >= 0 &&
+            c.width >= 1 &&
+            c.height >= 1 &&
+            c.x + c.width <= raw.width &&
+            c.y + c.height <= raw.height;
+        setSource(raw);
+        setImage(url);
+        setFilename(
+          typeof saved.filename === "string" ? saved.filename : file.name,
+        );
+        setCrop(
+          validCrop ? c : { x: 0, y: 0, width: raw.width, height: raw.height },
+        );
+        if (saved.mode === "native" || saved.mode === "grid")
+          setMode(saved.mode);
+        if (saved.grid) setGrid({ ...emptyGrid, ...saved.grid });
+        setBackground(saved.background === true);
+        if (/^#[0-9a-f]{6}$/i.test(saved.color)) setColor(saved.color);
+        if (Number.isFinite(saved.tolerance)) setTolerance(saved.tolerance);
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    if (source)
+      saveJSON(IMPORT_KEY, {
+        filename,
+        crop,
+        mode,
+        grid,
+        background,
+        color,
+        tolerance,
+      });
+  }, [source, filename, crop, mode, grid, background, color, tolerance]);
+  useEffect(() => {
+    if (!expanded || !source) return setPreview(null);
+    const timer = setTimeout(() => {
+      try {
+        setPreview(convert(source, crop, mode, grid));
+      } catch {
+        setPreview(null);
+      }
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [expanded, source, crop, mode, grid, background, color, tolerance]);
   useEffect(() => {
     function handlePaste(event) {
       if (disabled || loading) return;
@@ -188,7 +256,7 @@ export default function ImportPanel({
     );
     return native ? { kind: "native", settings: fallback } : null;
   }
-  async function load(file) {
+  async function load(file, cropped = false) {
     if (!file) return;
     setLoading(true);
     onError("");
@@ -204,61 +272,35 @@ export default function ImportPanel({
             "Choose a PNG, JPG, WebP, or GIF image.",
           ),
         );
-      if (file.size > 10 * 1024 * 1024)
+      if (!cropped && file.size > 10 * 1024 * 1024)
         throw new Error(
           msg(
             "Le fichier doit faire moins de 10 Mo.",
             "The file must be under 10 MB.",
           ),
         );
-      const bitmap = await createImageBitmap(file);
-      try {
-        if (
-          bitmap.width * bitmap.height > 16_000_000 ||
-          bitmap.width > 8192 ||
-          bitmap.height > 8192
-        )
-          throw new Error(
-            msg(
-              "Image trop grande : 16 millions de pixels et 8192 px par côté maximum.",
-              "Image too large: maximum 16 million pixels and 8192 px per side.",
-            ),
-          );
-        const canvas = document.createElement("canvas");
-        canvas.width = bitmap.width;
-        canvas.height = bitmap.height;
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
-        ctx.drawImage(bitmap, 0, 0);
-        const raw = {
-          width: bitmap.width,
-          height: bitmap.height,
-          data: ctx.getImageData(0, 0, bitmap.width, bitmap.height).data,
-        };
-        validateSource(raw);
-        const rect = { x: 0, y: 0, width: raw.width, height: raw.height },
-          name = file.name.replace(/\.[^.]+$/, "");
-        setSource(raw);
-        setImage(canvas.toDataURL("image/png"));
-        setFilename(name);
-        setCrop(rect);
-        setBackground(false);
-        setPicking(false);
-        const result = analyze(raw, rect);
-        if (result)
-          onImport(
-            convert(raw, rect, result.kind, result.settings, false),
-            name,
-          );
-        else
-          setNotice(
-            msg(
-              "Réglez les cases puis cliquez sur « Appliquer à la feuille ». La feuille actuelle reste inchangée.",
-              "Adjust the cells, then click “Apply to page”. The current page remains unchanged.",
-            ),
-          );
-      } finally {
-        bitmap.close();
-      }
+      imported.current = true;
+      const { raw, url } = await decode(file);
+      const rect = { x: 0, y: 0, width: raw.width, height: raw.height },
+        name = file.name.replace(/\.[^.]+$/, "");
+      setSource(raw);
+      setImage(url);
+      setFilename(name);
+      setCrop(rect);
+      setBackground(false);
+      if (!cropped) setOriginal(null);
+      current.current = file;
+      saveFile("source", file);
+      const result = analyze(raw, rect);
+      if (result)
+        onImport(convert(raw, rect, result.kind, result.settings, false), name);
+      else
+        setNotice(
+          msg(
+            "Réglez les cases puis cliquez sur « Appliquer à la feuille ». La feuille actuelle reste inchangée.",
+            "Adjust the cells, then click “Apply to page”. The current page remains unchanged.",
+          ),
+        );
     } catch (e) {
       onError(
         e.message ||
@@ -267,6 +309,65 @@ export default function ImportPanel({
     } finally {
       setLoading(false);
       if (input.current) input.current.value = "";
+    }
+  }
+  async function decode(file) {
+    const bitmap = await createImageBitmap(file);
+    try {
+      if (
+        bitmap.width * bitmap.height > 16_000_000 ||
+        bitmap.width > 8192 ||
+        bitmap.height > 8192
+      )
+        throw new Error(
+          msg(
+            "Image trop grande : 16 millions de pixels et 8192 px par côté maximum.",
+            "Image too large: maximum 16 million pixels and 8192 px per side.",
+          ),
+        );
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(bitmap, 0, 0);
+      const raw = {
+        width: bitmap.width,
+        height: bitmap.height,
+        data: ctx.getImageData(0, 0, bitmap.width, bitmap.height).data,
+      };
+      validateSource(raw);
+      return { raw, url: canvas.toDataURL("image/png") };
+    } finally {
+      bitmap.close();
+    }
+  }
+  async function cropImage() {
+    try {
+      const selected = cropSource(source, crop),
+        canvas = document.createElement("canvas");
+      canvas.width = selected.width;
+      canvas.height = selected.height;
+      canvas
+        .getContext("2d")
+        .putImageData(
+          new ImageData(selected.data, selected.width, selected.height),
+          0,
+          0,
+        );
+      const blob = await new Promise((resolve) =>
+        canvas.toBlob(resolve, "image/png"),
+      );
+      if (!blob) throw new Error();
+      setOriginal((previous) => previous || current.current);
+      await load(
+        new File([blob], filename + ".png", { type: "image/png" }),
+        true,
+      );
+    } catch (e) {
+      onError(
+        e.message ||
+          msg("Impossible de recadrer l’image.", "Unable to crop the image."),
+      );
     }
   }
   function point(event) {
@@ -292,26 +393,44 @@ export default function ImportPanel({
       ),
     };
   }
+  // Pixel boundary nearest to the pointer, so edges snap onto image lines.
+  function boundary(event) {
+    const bounds = event.currentTarget.getBoundingClientRect(),
+      snap = (offset, size, max) =>
+        Math.min(max, Math.max(0, Math.round((offset / size) * max)));
+    return {
+      x: snap(event.clientX - bounds.left, bounds.width, source.width),
+      y: snap(event.clientY - bounds.top, bounds.height, source.height),
+    };
+  }
   function start(event) {
     event.preventDefault();
-    const p = point(event);
-    if (picking) {
-      const offset = (p.y * source.width + p.x) * 4;
-      setColor(
-        "#" +
-          Array.from(source.data.slice(offset, offset + 3))
-            .map((v) => v.toString(16).padStart(2, "0"))
-            .join(""),
-      );
-      setBackground(true);
-      setPicking(false);
+    const edge = event.target.dataset?.edge;
+    if (edge) {
+      resizing.current = { edge, rect: crop };
+      event.currentTarget.setPointerCapture(event.pointerId);
       return;
     }
+    const p = point(event);
     anchor.current = p;
     event.currentTarget.setPointerCapture(event.pointerId);
     setCrop({ ...p, width: 1, height: 1 });
   }
   function move(event) {
+    if (resizing.current) {
+      const { edge, rect } = resizing.current,
+        p = boundary(event);
+      let left = rect.x,
+        top = rect.y,
+        right = rect.x + rect.width,
+        bottom = rect.y + rect.height;
+      if (edge.includes("w")) left = Math.min(p.x, right - 1);
+      if (edge.includes("e")) right = Math.max(p.x, left + 1);
+      if (edge.includes("n")) top = Math.min(p.y, bottom - 1);
+      if (edge.includes("s")) bottom = Math.max(p.y, top + 1);
+      setCrop({ x: left, y: top, width: right - left, height: bottom - top });
+      return;
+    }
     if (!anchor.current) return;
     const p = point(event),
       a = anchor.current;
@@ -342,7 +461,7 @@ export default function ImportPanel({
         <span className="step">1</span> {tr("Ajoute ton dessin")}
       </h2>
       <button
-        className="upload"
+        className={`upload ${source ? "compact" : ""}`}
         disabled={disabled || loading}
         onClick={() => input.current.click()}
         onDragOver={(e) => e.preventDefault()}
@@ -382,28 +501,31 @@ export default function ImportPanel({
             </small>
           </div>
           <p className="import-help">
-            {picking
-              ? tr("Cliquez sur la couleur de fond dans l’image.")
-              : tr(
-                  "Glissez sur l’image pour sélectionner une vignette ou une partie du dessin.",
-                )}
+            {tr(
+              "Glissez sur l’image pour sélectionner une vignette ou une partie du dessin.",
+            )}
           </p>
           <div
-            className={`source-selector ${picking ? "picking" : ""} ${expanded ? "expanded" : ""}`}
+            className={`source-selector ${expanded ? "expanded" : ""}`}
             style={
               expanded
                 ? {
-                    width: `min(90vw, ${(80 * source.width) / source.height}vh)`,
+                    width: `min(var(--selector-w), ${source.width / source.height} * var(--selector-h))`,
                   }
                 : undefined
             }
             onPointerDown={start}
             onPointerMove={move}
             onPointerUp={() => {
-              anchor.current = null;
+              const dragged = anchor.current || resizing.current;
+              anchor.current = resizing.current = null;
+              if (dragged && expanded)
+                try {
+                  analyze(source, crop);
+                } catch {}
             }}
             onPointerCancel={() => {
-              anchor.current = null;
+              anchor.current = resizing.current = null;
             }}
           >
             <img
@@ -430,10 +552,44 @@ export default function ImportPanel({
                 height={crop.height}
                 fill="none"
                 stroke="#e6a42e"
-                strokeWidth={source.width / 150}
+                strokeWidth={2}
+                vectorEffect="non-scaling-stroke"
               />
             </svg>
+            {["nw", "n", "ne", "e", "se", "s", "sw", "w"].map((edge) => (
+              <span
+                key={edge}
+                className={`crop-handle ${edge}`}
+                data-edge={edge}
+                style={{
+                  left: `${((crop.x + (edge.includes("w") ? 0 : edge.includes("e") ? crop.width : crop.width / 2)) / source.width) * 100}%`,
+                  top: `${((crop.y + (edge.includes("n") ? 0 : edge.includes("s") ? crop.height : crop.height / 2)) / source.height) * 100}%`,
+                }}
+              />
+            ))}
           </div>
+          {expanded && (
+            <div className="selection-preview">
+              <strong>{tr("Aperçu de la sélection")}</strong>
+              {preview ? (
+                <>
+                  <PreviewCanvas model={preview} />
+                  <small>
+                    {preview.width} × {preview.height} {tr("cases")} ·{" "}
+                    {crop.width} × {crop.height} px
+                  </small>
+                </>
+              ) : (
+                <small>…</small>
+              )}
+              <p className="import-notice" role="status">
+                {notice}
+              </p>
+              <button className="apply-import" onClick={apply}>
+                {tr("Appliquer à la feuille")}
+              </button>
+            </div>
+          )}
           <button
             className={`expand-source ${expanded ? "close-source" : ""}`}
             onClick={() => setExpanded(!expanded)}
@@ -442,6 +598,22 @@ export default function ImportPanel({
               ? tr("Terminer la sélection agrandie")
               : tr("Agrandir pour sélectionner")}
           </button>
+          <div className="import-actions crop-actions">
+            <button
+              disabled={
+                loading ||
+                (crop.width === source.width && crop.height === source.height)
+              }
+              onClick={cropImage}
+            >
+              {tr("Recadrer sur la sélection")}
+            </button>
+            {original && (
+              <button disabled={loading} onClick={() => load(original)}>
+                {tr("Image d’origine")}
+              </button>
+            )}
+          </div>
           <details className="advanced-import">
             <summary>{tr("Réglages précis")}</summary>
             <p className="import-help">
@@ -585,12 +757,6 @@ export default function ImportPanel({
                   onChange={(e) => setColor(e.target.value)}
                 />
               </label>
-              <button
-                aria-pressed={picking}
-                onClick={() => setPicking(!picking)}
-              >
-                {tr(picking ? "Annuler la pipette" : "Pipette sur l’image")}
-              </button>
               <label className="tolerance">
                 {tr("Tolérance")} <output>{tolerance}</output>
                 <input
@@ -619,4 +785,41 @@ export default function ImportPanel({
       )}
     </section>
   );
+}
+function PreviewCanvas({ model }) {
+  const canvas = useRef();
+  useEffect(() => {
+    const c = canvas.current,
+      scale = Math.max(
+        1,
+        Math.floor(600 / Math.max(model.width, model.height)),
+      );
+    c.width = model.width * scale;
+    c.height = model.height * scale;
+    const ctx = c.getContext("2d");
+    model.cells.forEach((id, i) => {
+      if (id === null) return;
+      ctx.fillStyle = PALETTE[id - 1].hex;
+      ctx.fillRect(
+        (i % model.width) * scale,
+        Math.floor(i / model.width) * scale,
+        scale,
+        scale,
+      );
+    });
+    if (scale < 6) return;
+    ctx.strokeStyle = "rgba(0,0,0,.25)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = 0; x <= model.width; x++) {
+      ctx.moveTo(x * scale + 0.5, 0);
+      ctx.lineTo(x * scale + 0.5, c.height);
+    }
+    for (let y = 0; y <= model.height; y++) {
+      ctx.moveTo(0, y * scale + 0.5);
+      ctx.lineTo(c.width, y * scale + 0.5);
+    }
+    ctx.stroke();
+  }, [model]);
+  return <canvas ref={canvas} />;
 }

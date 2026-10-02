@@ -1,7 +1,18 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { PALETTE, colorName } from "../lib/coloring.js";
+import { PALETTE, WHITE, colorName } from "../lib/coloring.js";
 import { homography, cssHomography } from "../lib/homography.js";
+import { loadJSON, saveJSON } from "../lib/storage.js";
+const PROJECTOR_KEY = "pixel-paper-projector";
+function savedSettings() {
+  const saved = loadJSON(PROJECTOR_KEY) || {};
+  try {
+    homography(saved.corners);
+  } catch {
+    saved.corners = null;
+  }
+  return saved;
+}
 const initial = [
   { x: 0.15, y: 0.15 },
   { x: 0.85, y: 0.15 },
@@ -23,12 +34,13 @@ export default function Projector({ model, onClose, locale = "fr" }) {
   const tr = (value) => (locale === "en" ? EN[value] || value : value);
   const root = useRef(),
     stage = useRef(),
-    initialized = useRef(false),
+    [saved] = useState(savedSettings),
+    initialized = useRef(Boolean(saved.corners)),
     [size, setSize] = useState({ width: 1, height: 1 }),
-    [corners, setCorners] = useState(initial),
+    [corners, setCorners] = useState(saved.corners || initial),
     [adjust, setAdjust] = useState(true),
-    [labels, setLabels] = useState(true),
-    [grid, setGrid] = useState(true),
+    [labels, setLabels] = useState(saved.labels ?? true),
+    [grid, setGrid] = useState(saved.grid ?? true),
     [message, setMessage] = useState(""),
     [fullscreen, setFullscreen] = useState(false);
   function reset(width = size.width, height = size.height) {
@@ -64,6 +76,13 @@ export default function Projector({ model, onClose, locale = "fr" }) {
       document.removeEventListener("fullscreenchange", changed);
     };
   }, []);
+  useEffect(() => {
+    saveJSON(PROJECTOR_KEY, {
+      corners: initialized.current ? corners : saved.corners,
+      labels,
+      grid,
+    });
+  }, [corners, labels, grid]);
   function updateCorner(index, p) {
     const proposed = corners.map((value, i) => (i === index ? p : value));
     try {
@@ -191,7 +210,7 @@ export default function Projector({ model, onClose, locale = "fr" }) {
                   stroke={grid ? "#636363" : "none"}
                   strokeWidth={cell * 0.025}
                 />
-                {labels && p && (
+                {labels && p && p.id !== WHITE && (
                   <text
                     x={x + cell / 2}
                     y={y + cell / 2}

@@ -8,11 +8,18 @@ import {
   geometry,
   colorsUsed,
   labelFor,
+  legendKey,
+  letterCodes,
   colorName,
+  validateOptions,
+  MAX_SIZE,
+  isModel,
 } from "../lib/coloring.js";
+import { loadJSON, saveJSON } from "../lib/storage.js";
 import ImportPanel from "./ImportPanel";
 import Projector from "./Projector";
 import { createColoringPdf } from "../lib/pdf.js";
+const SHEET_KEY = "pixel-paper-sheet";
 const COPY = {
   fr: {
     private: "Tout reste sur votre appareil",
@@ -33,6 +40,7 @@ const COPY = {
     gridWidth: "Épaisseur de la grille",
     markers: "Repères dans les cases",
     numbers: "123 · Nombres",
+    letters: "A · Lettres",
     colors: "Abc · Couleurs",
     none: "Aucun",
     markerLight: "Clarté des repères",
@@ -52,7 +60,7 @@ const COPY = {
     name: "Prénom",
     myPalette: "MA PALETTE",
     actualSize: "A4 · Imprimer à taille réelle (100 %)",
-    square: "Zone carrée de",
+    square: "Dessin de",
     warning:
       "Les cases font moins de 3 mm : les repères seront petits à l’impression.",
     ready: "Ton coloriage est prêt !",
@@ -87,6 +95,7 @@ const COPY = {
     gridWidth: "Grid thickness",
     markers: "Cell labels",
     numbers: "123 · Numbers",
+    letters: "A · Letters",
     colors: "Abc · Colors",
     none: "None",
     markerLight: "Label lightness",
@@ -106,7 +115,7 @@ const COPY = {
     name: "Name",
     myPalette: "MY PALETTE",
     actualSize: "A4 · Print at actual size (100%)",
-    square: "Square area",
+    square: "Drawing",
     warning: "Cells are under 3 mm: labels will be small when printed.",
     ready: "Your coloring page is ready!",
     readyHelp: "You can print it, download the PDF, or project it.",
@@ -123,6 +132,7 @@ const COPY = {
 };
 function PixelGrid({ model, options, original = false, copy }) {
   const g = geometry(model, options),
+    codes = letterCodes(model, options),
     cell = 10,
     stroke = Math.min((options.grid / g.cell) * cell, 2);
   return (
@@ -138,7 +148,7 @@ function PixelGrid({ model, options, original = false, copy }) {
           y = Math.floor(i / model.width) * cell,
           p = PALETTE[id - 1],
           black = options.outlines && id === 1,
-          label = labelFor(id, options);
+          label = labelFor(id, options, codes);
         return (
           <g key={i}>
             <rect
@@ -177,17 +187,34 @@ export default function Home() {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [projector, setProjector] = useState(false),
-    [locale, setLocale] = useState("fr");
+    [locale, setLocale] = useState("fr"),
+    [restored, setRestored] = useState(false);
   const copy = COPY[locale];
   useEffect(() => {
-    const saved = localStorage.getItem("pixel-paper-language");
+    let saved = null;
+    try {
+      saved = localStorage.getItem("pixel-paper-language");
+    } catch {}
     const detected = navigator.languages?.some((language) =>
       language.toLowerCase().startsWith("en"),
     )
       ? "en"
       : "fr";
     setLocale(saved === "en" || saved === "fr" ? saved : detected);
+    const sheet = loadJSON(SHEET_KEY);
+    if (isModel(sheet?.model)) {
+      setModel(sheet.model);
+      if (typeof sheet.name === "string") setName(sheet.name);
+    }
+    try {
+      setOptions(validateOptions(sheet?.options));
+    } catch {}
+    if (sheet?.tab === "original") setTab("original");
+    setRestored(true);
   }, []);
+  useEffect(() => {
+    if (restored) saveJSON(SHEET_KEY, { model, name, options, tab });
+  }, [restored, model, name, options, tab]);
   useEffect(() => {
     document.documentElement.lang = locale;
     setName((current) =>
@@ -198,7 +225,9 @@ export default function Home() {
   }, [locale]);
   function changeLocale(next) {
     setLocale(next);
-    localStorage.setItem("pixel-paper-language", next);
+    try {
+      localStorage.setItem("pixel-paper-language", next);
+    } catch {}
   }
   const update = (key, value) => setOptions((o) => ({ ...o, [key]: value }));
   async function download() {
@@ -221,7 +250,8 @@ export default function Home() {
     }
   }
   const g = geometry(model, options),
-    used = colorsUsed(model, options);
+    used = colorsUsed(model, options),
+    codes = letterCodes(model, { ...options, locale });
   return (
     <>
       {projector && (
@@ -319,7 +349,7 @@ export default function Home() {
                   id="size"
                   type="range"
                   min="60"
-                  max="190"
+                  max={MAX_SIZE}
                   value={options.size}
                   onChange={(e) => update("size", +e.target.value)}
                 />
@@ -348,6 +378,7 @@ export default function Home() {
                 <div className="segments">
                   {[
                     ["numbers", copy.numbers],
+                    ["letters", copy.letters],
                     ["names", copy.colors],
                     ["none", copy.none],
                   ].map(([value, label]) => (
@@ -430,12 +461,12 @@ export default function Home() {
             </div>
             <div className="paper-stage">
               <div className="paper">
-                <div className="paper-heading">
-                  <strong>{copy.workshop}</strong>
+                <div className={`paper-heading ${g.compact ? "compact" : ""}`}>
+                  {!g.compact && <strong>{copy.workshop}</strong>}
                   <span>
                     {model.width} × {model.height} pixels
                   </span>
-                  <h3>{copy.colorNow}</h3>
+                  {!g.compact && <h3>{copy.colorNow}</h3>}
                   <small>{copy.name} : ................................</small>
                 </div>
                 <div
@@ -455,13 +486,20 @@ export default function Home() {
                   />
                 </div>
                 {options.legend && (
-                  <div className="legend">
+                  <div
+                    className="legend"
+                    style={{ top: `${((g.legendY - 2.4) / 297) * 100}%` }}
+                  >
                     <strong>{copy.myPalette}</strong>
                     <div>
                       {used.map((p) => (
                         <span key={p.id}>
                           <i style={{ background: p.hex }} />
-                          {p.id} &nbsp; {colorName(p, locale)}
+                          {legendKey(
+                            p,
+                            { ...options, locale },
+                            codes,
+                          )} &nbsp; {colorName(p, locale)}
                         </span>
                       ))}
                     </div>
@@ -475,7 +513,8 @@ export default function Home() {
             </div>
             <div className="preview-bottom">
               <span>
-                ↔ &nbsp; {copy.square} {options.size} × {options.size} mm
+                ↔ &nbsp; {copy.square} {Math.round(g.width)} ×{" "}
+                {Math.round(g.height)} mm
               </span>
               <span>
                 {model.width * model.height} {copy.cases}
