@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, PDFName } from "pdf-lib";
 import {
   readPixels,
   geometry,
@@ -93,6 +93,12 @@ test("PDF has exactly one A4 page for all label modes and maximum layout", async
     });
     const pdf = await PDFDocument.load(bytes);
     assert.equal(pdf.getPageCount(), 1);
+    const [link] = pdf.getPage(0).node.Annots().asArray(),
+      action = pdf.context.lookup(link).lookup(PDFName.of("A"));
+    assert.equal(
+      action.lookup(PDFName.of("URI")).decodeText(),
+      "https://pixel-paper.jeremy-laviole.fr",
+    );
     assert.ok(Math.abs(pdf.getPage(0).getWidth() - 595.2756) < 0.01);
     assert.ok(Math.abs(pdf.getPage(0).getHeight() - 841.8898) < 0.01);
   }

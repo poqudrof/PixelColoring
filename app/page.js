@@ -19,6 +19,7 @@ import { loadJSON, saveJSON } from "../lib/storage.js";
 import ImportPanel from "./ImportPanel";
 import Projector from "./Projector";
 import { createColoringPdf } from "../lib/pdf.js";
+import { SITE_URL } from "../lib/site.js";
 const SHEET_KEY = "pixel-paper-sheet";
 const COPY = {
   fr: {
@@ -506,7 +507,9 @@ export default function Home() {
                   </div>
                 )}
                 <div className="paper-footer">
-                  <span>PIXEL & PAPIER</span>
+                  <span>
+                    PIXEL & PAPIER · {SITE_URL.replace(/^https?:\/\//, "")}
+                  </span>
                   <span>{copy.actualSize}</span>
                 </div>
               </div>
