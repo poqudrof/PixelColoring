@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { PALETTE, readPixels } from "../lib/coloring.js";
+import { IMPORT_KEY } from "../lib/project.js";
+import { PALETTE, readPixels, paletteOf } from "../lib/coloring.js";
 import {
   detectGrid,
   reconstruct,
@@ -9,7 +10,6 @@ import {
   validateSource,
 } from "../lib/reconstruct.js";
 import { loadFile, loadJSON, saveFile, saveJSON } from "../lib/storage.js";
-const IMPORT_KEY = "pixel-paper-import";
 const emptyGrid = {
   columns: 24,
   rows: 24,
@@ -67,6 +67,7 @@ export default function ImportPanel({
   onError,
   disabled,
   locale = "fr",
+  palette = PALETTE,
 }) {
   const tr = (value) => (locale === "en" ? EN[value] || value : value);
   const msg = (fr, en) => (locale === "en" ? en : fr);
@@ -88,6 +89,8 @@ export default function ImportPanel({
     [expanded, setExpanded] = useState(false),
     [original, setOriginal] = useState(null),
     current = useRef(null),
+    applied = useRef(null),
+    lastPalette = useRef(palette),
     imported = useRef(false);
   useEffect(() => {
     let cancelled = false;
@@ -150,7 +153,38 @@ export default function ImportPanel({
       }
     }, 120);
     return () => clearTimeout(timer);
-  }, [expanded, source, crop, mode, grid, background, color, tolerance]);
+  }, [
+    expanded,
+    source,
+    crop,
+    mode,
+    grid,
+    background,
+    color,
+    tolerance,
+    palette,
+  ]);
+  // A palette edit redraws the applied selection with the new colors.
+  useEffect(() => {
+    if (lastPalette.current === palette) return;
+    lastPalette.current = palette;
+    const a = applied.current;
+    if (!a) return;
+    try {
+      onImport(
+        convert(
+          a.raw,
+          a.crop,
+          a.mode,
+          a.grid,
+          a.background,
+          a.color,
+          a.tolerance,
+        ),
+        a.filename,
+      );
+    } catch {}
+  }, [palette]);
   useEffect(() => {
     function handlePaste(event) {
       if (disabled || loading) return;
@@ -222,8 +256,8 @@ export default function ImportPanel({
     let selected = cropSource(raw, rect);
     if (bg) selected = removeBackground(selected, hex, tol);
     return kind === "native"
-      ? readPixels(selected.width, selected.height, selected.data)
-      : reconstruct(selected, settings);
+      ? readPixels(selected.width, selected.height, selected.data, palette)
+      : reconstruct(selected, settings, palette);
   }
   function analyze(raw, rect) {
     const selected = cropSource(raw, rect),
@@ -292,9 +326,17 @@ export default function ImportPanel({
       current.current = file;
       saveFile("source", file);
       const result = analyze(raw, rect);
-      if (result)
+      if (result) {
+        applied.current = {
+          raw,
+          crop: rect,
+          mode: result.kind,
+          grid: result.settings,
+          background: false,
+          filename: name,
+        };
         onImport(convert(raw, rect, result.kind, result.settings, false), name);
-      else
+      } else
         setNotice(
           msg(
             "Réglez les cases puis cliquez sur « Appliquer à la feuille ». La feuille actuelle reste inchangée.",
@@ -443,6 +485,16 @@ export default function ImportPanel({
   }
   function apply() {
     try {
+      applied.current = {
+        raw: source,
+        crop,
+        mode,
+        grid,
+        background,
+        color,
+        tolerance,
+        filename,
+      };
       onImport(convert(source, crop, mode, grid), filename);
       onError("");
       setNotice(
@@ -799,7 +851,7 @@ function PreviewCanvas({ model }) {
     const ctx = c.getContext("2d");
     model.cells.forEach((id, i) => {
       if (id === null) return;
-      ctx.fillStyle = PALETTE[id - 1].hex;
+      ctx.fillStyle = paletteOf(model)[id - 1].hex;
       ctx.fillRect(
         (i % model.width) * scale,
         Math.floor(i / model.width) * scale,

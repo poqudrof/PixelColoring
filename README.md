@@ -28,6 +28,7 @@ Le build génère `robots.txt`, `sitemap.xml`, l’URL canonique, les balises Op
 - PNG, JPEG, WebP ou GIF (première image), jusqu’à 16 millions de pixels, 8192 px par côté et 10 Mo dans l’interface. La grille reconstruite reste limitée à 256 × 256 cases.
 - Lecture native (un pixel source = une case) ou reconstruction d’images agrandies et quadrillées. Détection automatique des répétitions de blocs et lignes, avec réglages manuels des colonnes, lignes et marges.
 - Les couleurs sont rapprochées de 12 teintes françaises par distance RGB : noir, blanc, gris, rouge, orange, jaune, vert, bleu, violet, rose, marron et beige. Les numéros restent stables.
+- Palette personnalisable (« Mes papiers colorés ») : de 2 à 24 couleurs avec nom et teinte, pour utiliser les couleurs de ses papiers. L’image est rapprochée de cette palette ; le numéro d’une couleur est sa position dans la liste. Les teintes très claires (blanc) restent vierges et la plus sombre sert de contour.
 - Les pixels presque transparents sont ignorés ; les pixels semi-transparents sont composités sur blanc. Le fond blanc opaque reste à colorier.
 - Préremplissage facultatif des pixels classés noirs, y compris les détails intérieurs. Aucun contour supplémentaire n’est inventé.
 - Repères : numéros, noms français ou aucun ; gris réglable de 15 à 95 %.

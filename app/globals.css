@@ -1411,3 +1411,73 @@ input[type="range"] {
     max-height: 22vh;
   }
 }
+
+.palette-editor h2 {
+  margin-bottom: 8px;
+}
+.palette-help {
+  font-size: 10px;
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+.palette-editor ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+}
+.palette-editor li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.swatch-number {
+  width: 18px;
+  font-size: 10px;
+  color: var(--muted);
+  text-align: right;
+}
+.palette-editor input[type="color"] {
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+.palette-editor input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.palette-editor li button {
+  border: 0;
+  background: none;
+  font-size: 16px;
+  color: var(--muted);
+}
+.palette-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.palette-actions button {
+  flex: 1;
+  padding: 8px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--green);
+}
+
+.file-button {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}

@@ -4,6 +4,13 @@ import { flushSync } from "react-dom";
 import {
   PALETTE,
   DEFAULTS,
+  paletteOf,
+  outlineId,
+  makePalette,
+  isPalette,
+  remapModel,
+  MIN_COLORS,
+  MAX_COLORS,
   demoModel,
   geometry,
   colorsUsed,
@@ -17,10 +24,13 @@ import {
 } from "../lib/coloring.js";
 import { loadJSON, saveJSON } from "../lib/storage.js";
 import ImportPanel from "./ImportPanel";
+import PaletteEditor from "./PaletteEditor";
 import Projector from "./Projector";
 import { createColoringPdf } from "../lib/pdf.js";
+import { buildProject, readProject } from "../lib/project.js";
 import { SITE_URL } from "../lib/site.js";
 const SHEET_KEY = "pixel-paper-sheet";
+const PALETTE_KEY = "pixel-paper-palette";
 const COPY = {
   fr: {
     private: "Tout reste sur votre appareil",
@@ -68,6 +78,9 @@ const COPY = {
     readyHelp:
       "Tu peux maintenant l’imprimer, télécharger le PDF ou le projeter.",
     projector: "Projeter",
+    saveProject: "Enregistrer le projet",
+    openProject: "Ouvrir un projet",
+    projectError: "Ce fichier n’est pas un projet Pixel & Papier valide.",
     print: "Imprimer",
     preparing: "Préparation…",
     download: "Télécharger le PDF",
@@ -121,6 +134,9 @@ const COPY = {
     ready: "Your coloring page is ready!",
     readyHelp: "You can print it, download the PDF, or project it.",
     projector: "Project",
+    saveProject: "Save project",
+    openProject: "Open project",
+    projectError: "This file is not a valid Pixel & Paper project.",
     print: "Print",
     preparing: "Preparing…",
     download: "Download PDF",
@@ -134,6 +150,8 @@ const COPY = {
 function PixelGrid({ model, options, original = false, copy }) {
   const g = geometry(model, options),
     codes = letterCodes(model, options),
+    palette = paletteOf(model),
+    outline = outlineId(palette),
     cell = 10,
     stroke = Math.min((options.grid / g.cell) * cell, 2);
   return (
@@ -147,9 +165,9 @@ function PixelGrid({ model, options, original = false, copy }) {
         if (id === null) return null;
         const x = (i % model.width) * cell,
           y = Math.floor(i / model.width) * cell,
-          p = PALETTE[id - 1],
-          black = options.outlines && id === 1,
-          label = labelFor(id, options, codes);
+          p = palette[id - 1],
+          black = options.outlines && id === outline,
+          label = labelFor(id, options, codes, palette);
         return (
           <g key={i}>
             <rect
@@ -189,7 +207,9 @@ export default function Home() {
     [busy, setBusy] = useState(false),
     [projector, setProjector] = useState(false),
     [locale, setLocale] = useState("fr"),
-    [restored, setRestored] = useState(false);
+    [palette, setPalette] = useState(PALETTE),
+    [restored, setRestored] = useState(false),
+    [session, setSession] = useState(0);
   const copy = COPY[locale];
   useEffect(() => {
     let saved = null;
@@ -203,6 +223,8 @@ export default function Home() {
       : "fr";
     setLocale(saved === "en" || saved === "fr" ? saved : detected);
     const sheet = loadJSON(SHEET_KEY);
+    const savedPalette = loadJSON(PALETTE_KEY);
+    if (isPalette(savedPalette)) setPalette(savedPalette);
     if (isModel(sheet?.model)) {
       setModel(sheet.model);
       if (typeof sheet.name === "string") setName(sheet.name);
@@ -229,6 +251,42 @@ export default function Home() {
     try {
       localStorage.setItem("pixel-paper-language", next);
     } catch {}
+  }
+  useEffect(() => {
+    if (restored) saveJSON(PALETTE_KEY, palette);
+  }, [restored, palette]);
+  function changePalette(next) {
+    setPalette(next);
+    // Same size: colors were edited in place, so cells keep their numbers.
+    setModel((m) =>
+      next.length === palette.length
+        ? { ...m, palette: next }
+        : remapModel(m, next),
+    );
+  }
+  async function saveProject() {
+    const text = await buildProject({ name, options, palette, model, tab }),
+      url = URL.createObjectURL(new Blob([text], { type: "application/json" })),
+      a = document.createElement("a");
+    a.href = url;
+    a.download = `${name.replace(/[^\p{L}\p{N}_-]/gu, "-")}.pixelpaper.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+  async function openProject(file) {
+    if (!file) return;
+    setError("");
+    try {
+      const p = await readProject(await file.text());
+      setPalette(p.palette);
+      setModel(p.model);
+      setName(p.name);
+      setOptions(p.options);
+      setTab(p.tab);
+      setSession((n) => n + 1);
+    } catch {
+      setError(copy.projectError);
+    }
   }
   const update = (key, value) => setOptions((o) => ({ ...o, [key]: value }));
   async function download() {
@@ -327,7 +385,9 @@ export default function Home() {
         <div className="workspace">
           <aside>
             <ImportPanel
+              key={session}
               locale={locale}
+              palette={palette}
               disabled={busy}
               onError={setError}
               onImport={(nextModel, nextName) => {
@@ -338,6 +398,11 @@ export default function Home() {
             <div className="import-summary">
               {name} · {model.width} × {model.height} {copy.cases}
             </div>
+            <PaletteEditor
+              palette={palette}
+              onChange={changePalette}
+              locale={locale}
+            />
             <section className="card settings">
               <h2>
                 <span className="step">2</span> {copy.settings}
@@ -537,6 +602,21 @@ export default function Home() {
             <p>{copy.readyHelp}</p>
           </div>
           <div className="actions">
+            <button className="secondary" onClick={saveProject}>
+              {copy.saveProject}
+            </button>
+            <label className="secondary file-button">
+              {copy.openProject}
+              <input
+                type="file"
+                accept=".json,application/json"
+                hidden
+                onChange={(e) => {
+                  openProject(e.target.files[0]);
+                  e.target.value = "";
+                }}
+              />
+            </label>
             <button className="secondary" onClick={() => setProjector(true)}>
               ▦ {copy.projector}
             </button>

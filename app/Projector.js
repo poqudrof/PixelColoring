@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { PALETTE, WHITE, colorName } from "../lib/coloring.js";
+import { paletteOf, isBlank, colorName } from "../lib/coloring.js";
 import { homography, cssHomography } from "../lib/homography.js";
 import { loadJSON, saveJSON } from "../lib/storage.js";
 const PROJECTOR_KEY = "pixel-paper-projector";
@@ -194,7 +194,7 @@ export default function Projector({ model, onClose, locale = "fr" }) {
           {model.cells.map((id, i) => {
             const x = left + (i % model.width) * cell,
               y = top + Math.floor(i / model.width) * cell,
-              p = id ? PALETTE[id - 1] : null,
+              p = id ? paletteOf(model)[id - 1] : null,
               dark =
                 p &&
                 p.rgb.reduce((s, c, j) => s + c * [0.299, 0.587, 0.114][j], 0) <
@@ -210,7 +210,7 @@ export default function Projector({ model, onClose, locale = "fr" }) {
                   stroke={grid ? "#636363" : "none"}
                   strokeWidth={cell * 0.025}
                 />
-                {labels && p && p.id !== WHITE && (
+                {labels && p && !isBlank(p) && (
                   <text
                     x={x + cell / 2}
                     y={y + cell / 2}
