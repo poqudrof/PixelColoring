@@ -16,6 +16,7 @@ import {
   colorsUsed,
   labelFor,
   legendKey,
+  colorCounts,
   letterCodes,
   colorName,
   validateOptions,
@@ -400,6 +401,7 @@ export default function Home() {
             </div>
             <PaletteEditor
               palette={palette}
+              counts={colorCounts(model)}
               onChange={changePalette}
               locale={locale}
             />

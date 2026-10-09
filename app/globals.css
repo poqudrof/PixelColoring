@@ -1438,6 +1438,13 @@ input[type="range"] {
   color: var(--muted);
   text-align: right;
 }
+.swatch-count {
+  min-width: 34px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  text-align: right;
+}
 .palette-editor input[type="color"] {
   width: 32px;
   height: 28px;

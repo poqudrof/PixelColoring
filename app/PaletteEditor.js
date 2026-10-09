@@ -15,6 +15,7 @@ const TEXT = {
     add: "+ Ajouter une couleur",
     reset: "Palette d’origine",
     fallback: (n) => `Couleur ${n}`,
+    count: (n) => `${n} pixel${n > 1 ? "s" : ""}`,
   },
   en: {
     title: "My colored papers",
@@ -25,9 +26,15 @@ const TEXT = {
     add: "+ Add a color",
     reset: "Original palette",
     fallback: (n) => `Color ${n}`,
+    count: (n) => `${n} pixel${n === 1 ? "" : "s"}`,
   },
 };
-export default function PaletteEditor({ palette, onChange, locale = "fr" }) {
+export default function PaletteEditor({
+  palette,
+  counts = {},
+  onChange,
+  locale = "fr",
+}) {
   const t = TEXT[locale] || TEXT.fr,
     key = locale === "en" ? "nameEn" : "name",
     edit = (index, patch) =>
@@ -57,6 +64,13 @@ export default function PaletteEditor({ palette, onChange, locale = "fr" }) {
               maxLength={24}
               onChange={(e) => edit(i, { [key]: e.target.value })}
             />
+            <span
+              className="swatch-count"
+              title={t.count(counts[p.id] || 0)}
+              aria-label={t.count(counts[p.id] || 0)}
+            >
+              {counts[p.id] || 0}
+            </span>
             <button
               aria-label={`${t.remove} ${p.id}`}
               disabled={palette.length <= MIN_COLORS}

@@ -6,6 +6,7 @@ import {
   geometry,
   DEFAULTS,
   colorsUsed,
+  colorCounts,
   demoModel,
   validateOptions,
   labelFor,
@@ -109,4 +110,13 @@ test("saved models are checked before being restored", () => {
   assert.equal(isModel({ width: 2, height: 1, cells: [1] }), false);
   assert.equal(isModel({ width: 1, height: 1, cells: [13] }), false);
   assert.equal(isModel({ width: 1, height: 1, cells: ["1"] }), false);
+});
+
+test("colorCounts counts the cells of each color and ignores empty ones", () => {
+  const counts = colorCounts({
+    width: 3,
+    height: 2,
+    cells: [1, 2, 2, null, 1, 2],
+  });
+  assert.deepEqual(counts, { 1: 2, 2: 3 });
 });
